@@ -17,7 +17,7 @@ def loadCranQry(qfile):
             if qid !='':
                 queries[qid] = CranQry(qid, text)
                 #print 'qid:', qid, text
-            qid = line.strip().split()[1]
+            qid = line.strip().split()[1].lstrip("0")
             text = ''
         elif '.W' in line:
             None

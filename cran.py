@@ -2,11 +2,12 @@
 Processing the special format used by the Cranfield Dataset
 '''
 
-from doc import Document
+from doc import Document, Collection
 
 class CranFile:
     def __init__(self, filename):
         self.docs = []
+        self.collection = Collection()
 
         cf = open(filename)
         docid = ''
@@ -36,6 +37,10 @@ class CranFile:
                 buf += line
         self.docs.append(Document(docid, title, author, buf)) # the last one
 
+        # Create the document Collection
+        for i in range(len(self.docs)):
+            self.collection.add(self.docs[i].docID, self.docs[i])
+        
 if __name__ == '__main__':
     ''' testing '''
 

@@ -28,5 +28,8 @@ class Collection:
         else:
             return None
 
+    def add(self, docID, document):
+        self.docs[docID] = document
+
     # more methods if needed
 
