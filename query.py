@@ -55,7 +55,48 @@ class QueryProcessor:
     def booleanQuery(self, preprocessed_query):
         ''' boolean query processing; note that a query like "A B C" is transformed to "A AND B AND C" for retrieving posting lists and merge them'''
         #ToDo: return a list of docIDs
-        
+
+        def intersect(posting_1, posting_2):
+            answer = [] # The final intersect of the two posting lists
+
+            print(posting_1)
+            print(posting_2)
+
+            while (len(posting_1) != 0) and (len(posting_2) != 0):
+                print("Checking posting_1: {} with posting_2: {}".format(posting_1[0], posting_2[0]))
+
+                if posting_1[0] == posting_2[0]:
+                    answer.append(posting_1[0])
+                    posting_1.pop(0)
+                    posting_2.pop(0)
+                elif posting_1[0] < posting_2[0]:
+                    posting_1.pop(0)
+                else:
+                    posting_2.pop(0)
+            
+            return answer
+
+        # Approach: Optimize booleanQuery processing using Document Frequency
+        # Rational: Since every term in the query are AND, during the merge/intersect, 
+        # We can intersect the 2 smallest posting lists since all intermediate results will be no longer than the smallest posting list,
+        # to minimize time and work needed
+
+        term_doc_freq_postings = []
+
+        # Create a list of (term, document frequency, sorted_postings) tuple
+        for term in preprocessed_query:
+            term_doc_freq_postings.append((term, len(self.index.items[term].sorted_postings), self.index.items[term].sorted_postings))
+
+        # Sort the tuple by increasing document frequency
+        term_doc_freq_postings = sorted(term_doc_freq_postings, key=lambda elem : elem[1])
+
+        ######### RESUME FROM HERE #########
+        answer = intersect(term_doc_freq_postings[0][2], term_doc_freq_postings[1][2])
+
+        print(answer)
+
+
+
 
     def vectorQuery(self, k):
         ''' vector query processing, using the cosine similarity. '''
@@ -109,9 +150,9 @@ def query():
 
     # Process with preprocessed_query
     if processing_algorithm == "0":
-        booleanQuery(preprocessed_query)
+        queryProcessor.booleanQuery(preprocessed_query)
     else:
-        vectorQuery(3)
+        queryProcessor.vectorQuery(3)
 
 if __name__ == '__main__':
     #test()
