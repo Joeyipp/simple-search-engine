@@ -38,10 +38,11 @@ class Posting:
     def term_freq(self):
         ''' return the term frequency in the document'''
         #ToDo (Done)
-        if len(self.positions) > 0:
-            return 1 + math.log(len(self.positions), 10)
-        else:
-            return 0
+        # if len(self.positions) > 0:
+        #     return 1 + math.log(len(self.positions), 10)
+        # else:
+        #     return 0
+        return len(self.positions)
 
 class IndexItem:
     def __init__(self, term):

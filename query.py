@@ -6,6 +6,8 @@ query processing
 
 import sys
 import doc
+import math
+import numpy as np
 
 from util import *
 from index import *
@@ -57,8 +59,8 @@ class QueryProcessor:
     def booleanQuery(self, preprocessed_query):
         ''' boolean query processing; note that a query like "A B C" is transformed to "A AND B AND C" for retrieving posting lists and merge them'''
         #ToDo: return a list of docIDs (Done)
-
         # Intersecting two posting lists
+
         def intersect(posting_1, posting_2):
             answer = [] # The final intersect of the two posting lists
 
@@ -93,6 +95,7 @@ class QueryProcessor:
         term_doc_freq_postings = sorted(term_doc_freq_postings, key=lambda elem : elem[1])
 
         # The MERGE
+        print(term_doc_freq_postings[0])
         answer = intersect(term_doc_freq_postings[0][2], term_doc_freq_postings[1][2])
 
         for i in range(2, len(term_doc_freq_postings)):
@@ -101,10 +104,74 @@ class QueryProcessor:
         return answer
 
 
-    def vectorQuery(self, k):
+    def vectorQuery(self, preprocessed_query, k):
         ''' vector query processing, using the cosine similarity. '''
         #ToDo: return top k pairs of (docID, similarity), ranked by their cosine similarity with the query in the descending order
         # You can use term frequency or TFIDF to construct the vectors
+
+        # TF Weighting (Not implemented)
+        # if len(self.positions) > 0:
+        #     return 1 + math.log(len(self.positions), 10)
+        # else:
+        #     return 0
+
+        def cosine_similarity(query, document):
+            # cosine_similarity(query, document) = dot_product(query, document) / ||query|| * ||document||
+
+            dot_product = np.dot(query, document)
+            query_l2_norm = math.sqrt(sum(np.square(query)))
+            document_l2_norm = math.sqrt(sum(np.square(document)))
+
+            return dot_product / (query_l2_norm * document_l2_norm)
+
+        scores = []
+
+        query_tf = {}
+        for term in preprocessed_query:
+            if term not in query_tf:
+                query_tf[term] = 1
+            else:
+                query_tf[term] += 1
+        
+        document_tf = {}
+        for term in preprocessed_query:
+            if term not in document_tf:
+                if self.index.find(term) == "None":
+                    continue
+                else:
+                    document_tf[term] = []
+                    postings = self.index.items[term].sorted_postings
+
+                    for docid in postings:
+                        document_tf[term].append((docid, self.index.items[term].posting[str(docid)].term_freq()))
+            else:
+                continue
+
+        document_idf = {}
+        for term in preprocessed_query:
+            if term not in document_idf:
+                if self.index.find(term) == "None":
+                    continue
+                else:
+                    document_idf[term] = self.index.idf(term)
+            else:
+                continue
+        
+        query_tf_idf = []
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
 
 def test():
     ''' test your code thoroughly. put the testing cases here'''
@@ -160,7 +227,7 @@ def query():
             print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(query_id, len(list_of_docIDs), list_of_docIDs))
 
         else:
-            queryProcessor.vectorQuery(3)
+            queryProcessor.vectorQuery(preprocessed_query, 3)
 
         ############################### SINGLE QUERY PROCESSING ###############################
 
@@ -187,7 +254,7 @@ def query():
                 fh.write("QueryID: {}\t#Docs: {}\tDocIDs: {}\n".format(queryId, len(list_of_docIDs), list_of_docIDs))
 
             else:
-                queryProcessor.vectorQuery(3)
+                queryProcessor.vectorQuery(preprocessed_query, 3)
 
         fh.close()
         ############################### BATCH QUERIES PROCESSING ###############################
