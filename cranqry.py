@@ -33,5 +33,36 @@ def test():
         print q, qrys[q].text
     print len(qrys)
 
+def qidMapping():
+    ############# CREATE A MAPPING of qid in qrels.txt to qid in query.text ##############
+    qrys = loadCranQry('query.text')
+    query_Ids = qrys.iterkeys()
+    query_Ids = sorted([int(queryId) for queryId in query_Ids])
+    
+    qids = []
+    mapping = {}
+
+    with open('qrels.text', 'r') as f:
+        data = f.readlines()
+        
+
+        for line in data:
+            qids.append(line.split()[0])
+
+    qids = sorted(set(([int(qid) for qid in qids])))
+
+    i = 0
+    for qid in qids:
+        mapping[qid] = query_Ids[i]
+        i += 1
+    
+    with open('qrelsMapping.txt', 'w') as f:
+        f.write("QrelsId\tQueryId\n")
+        for key, value in mapping.iteritems():
+            print(key, value)
+            f.write("{}\t{}\n".format(key, value))
+    ################################### END OF MAPPING ####################################
+
 if __name__ == '__main__':
     test()
+    #qidMapping()

@@ -56,7 +56,7 @@ class QueryProcessor:
 
     def booleanQuery(self, preprocessed_query):
         ''' boolean query processing; note that a query like "A B C" is transformed to "A AND B AND C" for retrieving posting lists and merge them'''
-        #ToDo: return a list of docIDs
+        #ToDo: return a list of docIDs (Done)
 
         # Intersecting two posting lists
         def intersect(posting_1, posting_2):
@@ -65,10 +65,10 @@ class QueryProcessor:
             while (len(posting_1) != 0) and (len(posting_2) != 0):
                 if posting_1[0] == posting_2[0]:
                     answer.append(posting_1[0])
-                    #if len(posting_1) != 0: # Error handling
-                    posting_1.pop(0)
-                    #if len(posting_2) != 0: # Error handling
-                    posting_2.pop(0)
+                    if len(posting_1) != 0: # Error handling
+                        posting_1.pop(0)
+                    if len(posting_2) != 0: # Error handling
+                        posting_2.pop(0)
                 elif posting_1[0] < posting_2[0]:
                     posting_1.pop(0)
                 else:
@@ -100,6 +100,7 @@ class QueryProcessor:
         
         return answer
 
+
     def vectorQuery(self, k):
         ''' vector query processing, using the cosine similarity. '''
         #ToDo: return top k pairs of (docID, similarity), ranked by their cosine similarity with the query in the descending order
@@ -112,8 +113,8 @@ def test():
 def query():
     ''' the main query processing program, using QueryProcessor'''
 
-    # ToDo: the commandline usage: "echo query_string | python query.py index_file processing_algorithm"
-    # processing_algorithm: 0 for booleanQuery and 1 for vectorQuery
+    # ToDo: the commandline usage: "echo query_string | python query.py index_file processing_algorithm" (Done)
+    # processing_algorithm: 0 for booleanQuery and 1 for vectorQuery (Done)
     # for booleanQuery, the program will print the total number of documents and the list of document IDs
     # for vectorQuery, the program will output the top 3 most similar documents
 
@@ -141,77 +142,55 @@ def query():
     # Load the query_text file into qrys dictionary
     qrys = loadCranQry(query_text)
 
-    # Retrieve the specific (raw) query based on query_id from the qrys dictionary
-    query = qrys[query_id].text
+    if query_id != "batch":
+        ############################### SINGLE QUERY PROCESSING ###############################
 
-    # Instantiate the QueryProcessor
-    queryProcessor = QueryProcessor(query, invertedIndex, cf.collection)
+        # Retrieve the specific (raw) query based on query_id from the qrys dictionary
+        query = qrys[query_id].text
 
-    # # Preprocess the raw query
-    # preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
+        # Instantiate the QueryProcessor
+        queryProcessor = QueryProcessor(query, invertedIndex, cf.collection)
 
-    # # Process with preprocessed_query
-    # if processing_algorithm == "0":
-    #     list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
-    #     print("Boolean Model")
-    #     print("Query ID: {}\tList of docIDs: {}".format(query_id, list_of_docIDs))
-
-    # else:
-    #     queryProcessor.vectorQuery(3)
-
-
-        
-    ############## CREATE A MAPPING of qid in qrels.txt to qid in query.text ##############
-    # qrys = loadCranQry('query.text')
-    query_Ids = qrys.iterkeys()
-    query_Ids = sorted([int(queryId) for queryId in query_Ids])
-    
-    # qids = []
-    # mapping = {}
-
-    # with open('qrels.text', 'r') as f:
-    #     data = f.readlines()
-        
-
-    #     for line in data:
-    #         qids.append(line.split()[0])
-
-    # qids = sorted(set(([int(qid) for qid in qids])))
-
-    # i = 0
-    # for qid in qids:
-    #     mapping[qid] = query_Ids[i]
-    #     i += 1
-    
-    # with open('qrelsMapping.txt', 'w') as f:
-    #     f.write("QrelsId\tQueryId\n")
-    #     for key, value in mapping.iteritems():
-    #         print(key, value)
-    #         f.write("{}\t{}\n".format(key, value))
-    #################################### END OF MAPPING ####################################
-
-
-    ############################### BATCH QUERIES PROCESSING ###############################
-
-    fh = open("booleanResults2.txt", "a")
-
-    for queryId in query_Ids:
-        queryProcessor.raw_query = qrys[str(queryId)].text
-    
         # Preprocess the raw query
         preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
 
         # Process with preprocessed_query
         if processing_algorithm == "0":
             list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
-            print("Query ID: {}\tList of docIDs: {}".format(queryId, list_of_docIDs))
-            fh.write("Query ID: {}\tList of docIDs: {}\n".format(queryId, list_of_docIDs))
+            print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(query_id, len(list_of_docIDs), list_of_docIDs))
 
         else:
             queryProcessor.vectorQuery(3)
 
-    fh.close()
-    ############################# END OF BATCH QUERIES PROCESSING #############################
+        ############################### SINGLE QUERY PROCESSING ###############################
+
+    else: 
+        ############################### BATCH QUERIES PROCESSING ###############################
+        query_Ids = qrys.iterkeys()
+        query_Ids = sorted([int(queryId) for queryId in query_Ids])
+
+        # Instantiate the QueryProcessor
+        queryProcessor = QueryProcessor("None", invertedIndex, cf.collection)
+
+        fh = open("booleanResult.txt", "w")
+
+        for queryId in query_Ids:
+            queryProcessor.raw_query = qrys[str(queryId)].text
+        
+            # Preprocess the raw query
+            preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
+
+            # Process with preprocessed_query
+            if processing_algorithm == "0":
+                list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
+                print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
+                fh.write("QueryID: {}\t#Docs: {}\tDocIDs: {}\n".format(queryId, len(list_of_docIDs), list_of_docIDs))
+
+            else:
+                queryProcessor.vectorQuery(3)
+
+        fh.close()
+        ############################### BATCH QUERIES PROCESSING ###############################
 
 if __name__ == '__main__':
     #test()
