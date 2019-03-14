@@ -34,10 +34,12 @@ class QueryProcessor:
         # Tokenizing
         query_terms = lowerCaseAndSplit(self.raw_query)
         
-        # Apply Norvig's Spelling Corrector
-        query_terms_spell_checked = []
-        for term in query_terms:
-            query_terms_spell_checked.append(correction(term))
+        # # Apply Norvig's Spelling Corrector
+        # query_terms_spell_checked = []
+        # for term in query_terms:
+        #     query_terms_spell_checked.append(correction(term))
+
+        query_terms_spell_checked = query_terms
 
         # Remove stopwords from the list of query terms
         query_terms_spell_checked = removeStopWords(query_terms_spell_checked)
@@ -56,18 +58,16 @@ class QueryProcessor:
         ''' boolean query processing; note that a query like "A B C" is transformed to "A AND B AND C" for retrieving posting lists and merge them'''
         #ToDo: return a list of docIDs
 
+        # Intersecting two posting lists
         def intersect(posting_1, posting_2):
             answer = [] # The final intersect of the two posting lists
 
-            print(posting_1)
-            print(posting_2)
-
             while (len(posting_1) != 0) and (len(posting_2) != 0):
-                print("Checking posting_1: {} with posting_2: {}".format(posting_1[0], posting_2[0]))
-
                 if posting_1[0] == posting_2[0]:
                     answer.append(posting_1[0])
+                    #if len(posting_1) != 0: # Error handling
                     posting_1.pop(0)
+                    #if len(posting_2) != 0: # Error handling
                     posting_2.pop(0)
                 elif posting_1[0] < posting_2[0]:
                     posting_1.pop(0)
@@ -85,18 +85,20 @@ class QueryProcessor:
 
         # Create a list of (term, document frequency, sorted_postings) tuple
         for term in preprocessed_query:
+            if self.index.find(term) == "None":
+                continue
             term_doc_freq_postings.append((term, len(self.index.items[term].sorted_postings), self.index.items[term].sorted_postings))
 
         # Sort the tuple by increasing document frequency
         term_doc_freq_postings = sorted(term_doc_freq_postings, key=lambda elem : elem[1])
 
-        ######### RESUME FROM HERE #########
+        # The MERGE
         answer = intersect(term_doc_freq_postings[0][2], term_doc_freq_postings[1][2])
 
-        print(answer)
-
-
-
+        for i in range(2, len(term_doc_freq_postings)):
+            answer = intersect(answer, term_doc_freq_postings[i][2])
+        
+        return answer
 
     def vectorQuery(self, k):
         ''' vector query processing, using the cosine similarity. '''
@@ -145,14 +147,71 @@ def query():
     # Instantiate the QueryProcessor
     queryProcessor = QueryProcessor(query, invertedIndex, cf.collection)
 
-    # Preprocess the raw query
-    preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
+    # # Preprocess the raw query
+    # preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
 
-    # Process with preprocessed_query
-    if processing_algorithm == "0":
-        queryProcessor.booleanQuery(preprocessed_query)
-    else:
-        queryProcessor.vectorQuery(3)
+    # # Process with preprocessed_query
+    # if processing_algorithm == "0":
+    #     list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
+    #     print("Boolean Model")
+    #     print("Query ID: {}\tList of docIDs: {}".format(query_id, list_of_docIDs))
+
+    # else:
+    #     queryProcessor.vectorQuery(3)
+
+
+        
+    ############## CREATE A MAPPING of qid in qrels.txt to qid in query.text ##############
+    # qrys = loadCranQry('query.text')
+    query_Ids = qrys.iterkeys()
+    query_Ids = sorted([int(queryId) for queryId in query_Ids])
+    
+    # qids = []
+    # mapping = {}
+
+    # with open('qrels.text', 'r') as f:
+    #     data = f.readlines()
+        
+
+    #     for line in data:
+    #         qids.append(line.split()[0])
+
+    # qids = sorted(set(([int(qid) for qid in qids])))
+
+    # i = 0
+    # for qid in qids:
+    #     mapping[qid] = query_Ids[i]
+    #     i += 1
+    
+    # with open('qrelsMapping.txt', 'w') as f:
+    #     f.write("QrelsId\tQueryId\n")
+    #     for key, value in mapping.iteritems():
+    #         print(key, value)
+    #         f.write("{}\t{}\n".format(key, value))
+    #################################### END OF MAPPING ####################################
+
+
+    ############################### BATCH QUERIES PROCESSING ###############################
+
+    fh = open("booleanResults2.txt", "a")
+
+    for queryId in query_Ids:
+        queryProcessor.raw_query = qrys[str(queryId)].text
+    
+        # Preprocess the raw query
+        preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
+
+        # Process with preprocessed_query
+        if processing_algorithm == "0":
+            list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
+            print("Query ID: {}\tList of docIDs: {}".format(queryId, list_of_docIDs))
+            fh.write("Query ID: {}\tList of docIDs: {}\n".format(queryId, list_of_docIDs))
+
+        else:
+            queryProcessor.vectorQuery(3)
+
+    fh.close()
+    ############################# END OF BATCH QUERIES PROCESSING #############################
 
 if __name__ == '__main__':
     #test()

@@ -114,7 +114,7 @@ class InvertedIndex:
         self.items = OrderedDict(sorted(self.items.items(), key=lambda t: t[0]))
 
     def find(self, term):
-        return self.items["term"]
+        return self.items.get(term, "None")
 
     def save(self, filename):
         ''' save to disk'''
@@ -126,7 +126,7 @@ class InvertedIndex:
                 f.write('\n')
             f.write(jsonpickle.encode(self.nDocs))
         
-        print("InvertedIndex successfully saved to {}".format(filename))
+        print("InvertedIndex successfully saved to {}\n".format(filename))
 
     def load(self, filename):
         ''' load from disk'''
@@ -139,7 +139,7 @@ class InvertedIndex:
                 self.items[indexItem.term] = indexItem
             self.nDocs = jsonpickle.decode(data[-1])
         
-        print("InvertedIndex successfully loaded to memory from {}".format(filename))
+        print("InvertedIndex successfully loaded to memory from {}\n".format(filename))
 
     def idf(self, term):
         ''' compute the inverted document frequency for a given term'''
