@@ -1,0 +1,4 @@
+jsonpickle
+scipy
+numpy
+nltk

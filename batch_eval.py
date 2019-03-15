@@ -83,7 +83,7 @@ def eval():
 
         # Instantiate the QueryProcessor
         queryProcessor = QueryProcessor("None", invertedIndex, cf.collection)
-
+        
         boolean_ndcg_scores = []
         total_boolean_ndcg_scores = 0
 
@@ -91,8 +91,13 @@ def eval():
         total_vector_ndcg_scores = 0
 
         for queryId in query_Ids:
+            print("Processing QueryID: {}".format(queryId))
+
             # Get the corresponding qrels_Id of the queryId
             qrels_Id = qrels_query_mapping[queryId]
+
+            # Get the corresponding list of relevant qrels docs 
+            list_of_relevant_qrels_docs = qrels_dict[qrels_Id]
 
             queryProcessor.raw_query = qrys[str(queryId)].text
         
@@ -100,36 +105,70 @@ def eval():
             preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
 
             # Process with preprocessed_query with Boolean Model
-            # list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
-            # if list_of_docIDs:
-            #     print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
+            y_true_boolean = []
+            y_score_boolean = []
+            list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
+            if list_of_docIDs:
+                for docID in list_of_docIDs:
+                    if docID not in list_of_relevant_qrels_docs:
+                        y_true_boolean.append(0)
+                    else:
+                        y_true_boolean.append(1)
+                    y_score_boolean.append(1)
+                
+                while len(y_true_boolean) != k:
+                    y_true_boolean.append(0)
+                    y_score_boolean.append(0)
+                
+                boolean_ndcg_score = ndcg_score(y_true_boolean, y_score_boolean, k) 
+                if math.isnan(boolean_ndcg_score):
+                    boolean_ndcg_score = float(0)
+                
+                boolean_ndcg_scores.append(boolean_ndcg_score)
+                total_boolean_ndcg_scores += boolean_ndcg_score
 
+                #print("QueryID: {}\tBoolean NDCG: {}".format(queryId, round(boolean_ndcg_score, 5)))
+                
+            else:
+                boolean_ndcg_scores.append(float(0))
+                total_boolean_ndcg_scores += float(0)
 
-            # Process with preprocessed_query with Vector Model    
+            # Process with preprocessed_query with Vector Model 
+            y_true_vector = []
+            y_score_vector = []   
             top_k_pairs = queryProcessor.vectorQuery(preprocessed_query, k)
-            list_of_relevant_qrels_docs = qrels_dict[qrels_Id]
-            y_true = []
-            y_score = []
             
             for pair in top_k_pairs:
                 if pair[0] not in list_of_relevant_qrels_docs:
-                    y_true.append(0)
+                    y_true_vector.append(0)
                 else:
-                    y_true.append(1)
-                y_score.append(pair[1])
+                    y_true_vector.append(1)
+                y_score_vector.append(pair[1])
             
-            vector_ndcg_score = ndcg_score(y_true, y_score, k)
+            vector_ndcg_score = ndcg_score(y_true_vector, y_score_vector, k)
             if math.isnan(vector_ndcg_score):
                 vector_ndcg_score = float(0)
 
             vector_ndcg_scores.append(vector_ndcg_score)
             total_vector_ndcg_scores += vector_ndcg_score
 
-            print("QueryID: {}\tNDCG Score: {}".format(queryId, round(vector_ndcg_score, 5)))
+            #print("QueryID: {}\tNDCG Score: {}".format(queryId, round(vector_ndcg_score, 5)))
 
-
+        # Compute the Average NDCG Scores for both Boolean and Vector Models
+        average_boolean_ndcg_scores = total_boolean_ndcg_scores / len(boolean_ndcg_scores)
         average_vector_ndcg_scores = total_vector_ndcg_scores / len(vector_ndcg_scores)
-        print("\nAverage Vector NDCG Scores: {}".format(round(average_vector_ndcg_scores, 5)))
+
+        # Compute the p-value using wilcoxon-test on Boolean and Vector NDCGs
+        p_value = scipy.stats.wilcoxon(boolean_ndcg_scores, vector_ndcg_scores)[1]
+
+        print("\nAvg. Boolean NDCG Scores:\t{}".format(round(average_boolean_ndcg_scores, 5)))
+        print("Avg. Vector NDCG Scores:\t{}".format(round(average_vector_ndcg_scores, 5)))
+        print("Wilcoxon Test P-Value:\t{}\n".format(p_value))
+
+        if p_value < 0.05:
+            print("There is significant difference between Boolean and Vector Retrieval Model!")
+        else:
+            print("There is NO significant difference between Boolean and Vector Retrieval Model!")
 
         ############################# BATCH QUERIES PROCESSING #############################
 
