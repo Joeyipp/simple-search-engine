@@ -30,8 +30,8 @@ def test():
     '''testing'''
     qrys =  loadCranQry('query.text')
     for q in qrys:
-        print q, qrys[q].text
-    print len(qrys)
+        print(q, qrys[q].text)
+    print(len(qrys))
 
 def qidMapping():
     ############# CREATE A MAPPING of qid in qrels.txt to qid in query.text ##############
@@ -53,16 +53,17 @@ def qidMapping():
 
     i = 0
     for qid in qids:
-        mapping[qid] = query_Ids[i]
+        mapping[query_Ids[i]] = qid
         i += 1
     
     with open('qrelsMapping.txt', 'w') as f:
         f.write("QrelsId\tQueryId\n")
         for key, value in mapping.iteritems():
-            print(key, value)
-            f.write("{}\t{}\n".format(key, value))
+            f.write("{}\t{}\n".format(value, key))
+    
+    return mapping
     ################################### END OF MAPPING ####################################
 
 if __name__ == '__main__':
-    test()
-    #qidMapping()
+    #test()
+    print(qidMapping())

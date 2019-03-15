@@ -37,6 +37,7 @@ def dcg_score(y_true, y_score, k=10, gains="exponential"):
 
 
 def ndcg_score(y_true, y_score, k=10, gains="exponential"):
+    np.seterr(all='ignore')
     """Normalized discounted cumulative gain (NDCG) at rank k
     Parameters
     ----------
@@ -55,4 +56,3 @@ def ndcg_score(y_true, y_score, k=10, gains="exponential"):
     best = dcg_score(y_true, y_true, k, gains)
     actual = dcg_score(y_true, y_score, k, gains)
     return actual / best
-
