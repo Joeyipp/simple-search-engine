@@ -108,14 +108,8 @@ class QueryProcessor:
 
     def vectorQuery(self, preprocessed_query, k):
         ''' vector query processing, using the cosine similarity. '''
-        #ToDo: return top k pairs of (docID, similarity), ranked by their cosine similarity with the query in the descending order
-        # You can use term frequency or TFIDF to construct the vectors
-
-        # TF Weighting (Not implemented)
-        # if len(self.positions) > 0:
-        #     return 1 + math.log(len(self.positions), 10)
-        # else:
-        #     return 0
+        # ToDo: return top k pairs of (docID, similarity), ranked by their cosine similarity with the query in the descending order (Done)
+        # You can use term frequency or TFIDF to construct the vectors (Done)
 
         def cosine_similarity(query, document):
             # cosine_similarity(query, document) = dot_product(query, document) / ||query|| * ||document||
@@ -124,55 +118,82 @@ class QueryProcessor:
             query_l2_norm = math.sqrt(sum(np.square(query)))
             document_l2_norm = math.sqrt(sum(np.square(document)))
 
-            return dot_product / (query_l2_norm * document_l2_norm)
+            if dot_product == float(0) or query_l2_norm == float(0) or document_l2_norm == float(0):
+                return float(0)
+            else:
+                return dot_product / (query_l2_norm * document_l2_norm)
 
-        scores = []
-
-        query_tf = {}
+        # Filter out any term in preprocessed query that does not exist in the invertedIndex
+        query_terms = []
         for term in preprocessed_query:
+            if self.index.find(term) == "None":
+                continue
+            else:
+                query_terms.append(term)
+        
+        # Compute the Query Term Frequency (TF)
+        # TF is defined as the number of times the term appears in a given query
+        # The current TF implementation does not account any log weighting or length normalization
+        query_tf = {}
+        for term in query_terms:
             if term not in query_tf:
                 query_tf[term] = 1
             else:
                 query_tf[term] += 1
         
+        # Compute the Document Term Frequency
         document_tf = {}
-        for term in preprocessed_query:
+        list_of_relevant_docs = []
+        for term in query_terms:
             if term not in document_tf:
-                if self.index.find(term) == "None":
-                    continue
-                else:
-                    document_tf[term] = []
-                    postings = self.index.items[term].sorted_postings
+                document_tf[term] = {}
+                postings = self.index.items[term].sorted_postings
 
-                    for docid in postings:
-                        document_tf[term].append((docid, self.index.items[term].posting[str(docid)].term_freq()))
+                for docid in postings:
+                    document_tf[term][docid] = self.index.items[term].posting[str(docid)].term_freq()
+                    list_of_relevant_docs.append(docid)
             else:
                 continue
+        list_of_relevant_docs = set(list_of_relevant_docs)
 
+        # Compute the Inverse Document Frequency
         document_idf = {}
-        for term in preprocessed_query:
+        for term in query_terms:
             if term not in document_idf:
-                if self.index.find(term) == "None":
-                    continue
-                else:
-                    document_idf[term] = self.index.idf(term)
+                document_idf[term] = self.index.idf(term)
             else:
                 continue
         
+        # Compute the Query TF-IDF Vector
         query_tf_idf = []
+        for term in query_terms:
+            query_tf_idf.append(query_tf[term] * document_idf[term])
 
+        # Compute the Document TF-IDF Vector
+        document_tf_idf = {}
+        for docid in list_of_relevant_docs:
+            document_tf_idf[docid] = []
+            for term in query_terms:
+                term_docs = [doc for doc in document_tf[term].iterkeys()]
+                if docid in term_docs:
+                    document_tf_idf[docid].append(document_tf[term][docid] * document_idf[term])
+                else:
+                    document_tf_idf[docid].append(0)
         
+        # Compute the the Query Cosine Similarity of on ALL Relevant Documents
+        cosine_similarity_score = []
+        for docid in list_of_relevant_docs:
+            cosine_similarity_score.append((docid, cosine_similarity(query_tf_idf, document_tf_idf[docid])))
 
+        # Sort the Cosine Similarity Score on descending order (Highest score first)
+        cosine_similarity_score = sorted(cosine_similarity_score, key=lambda elem : elem[1], reverse=True)
 
+        # Return the top K results
+        top_k = []
+        for i in range(k):
+            top_k.append(cosine_similarity_score[i])
 
-
-
-
-
-
-
-
-
+        return top_k
 
 
 def test():
@@ -184,8 +205,8 @@ def query():
 
     # ToDo: the commandline usage: "echo query_string | python query.py index_file processing_algorithm" (Done)
     # processing_algorithm: 0 for booleanQuery and 1 for vectorQuery (Done)
-    # for booleanQuery, the program will print the total number of documents and the list of document IDs
-    # for vectorQuery, the program will output the top 3 most similar documents
+    # for booleanQuery, the program will print the total number of documents and the list of document IDs (Done)
+    # for vectorQuery, the program will output the top 3 most similar documents (Done)
 
     # Parse the commandline
     index_file = sys.argv[1]
@@ -229,7 +250,13 @@ def query():
             print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(query_id, len(list_of_docIDs), list_of_docIDs))
 
         else:
-            queryProcessor.vectorQuery(preprocessed_query, 3)
+            #print(preprocessed_query)
+            k = int(input("Top K Pairs? "))
+            top_k_pairs = queryProcessor.vectorQuery(preprocessed_query, k)
+
+            print("\nQueryID: {}".format(query_id))
+            for pair in top_k_pairs:
+                print("DocID: {}\tScore: {:.3f}".format(pair[0], pair[1]))
 
         ############################### SINGLE QUERY PROCESSING ###############################
 
@@ -241,8 +268,11 @@ def query():
         # Instantiate the QueryProcessor
         queryProcessor = QueryProcessor("None", invertedIndex, cf.collection)
 
-        fh = open("booleanResult.txt", "w")
+        #fh = open("booleanResult.txt", "w")
 
+        if processing_algorithm == "1":
+            k = int(input("Top K Pairs? "))
+        
         for queryId in query_Ids:
             queryProcessor.raw_query = qrys[str(queryId)].text
         
@@ -255,12 +285,16 @@ def query():
                 
                 if list_of_docIDs:
                     print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
-                    fh.write("QueryID: {}\t#Docs: {}\tDocIDs: {}\n".format(queryId, len(list_of_docIDs), list_of_docIDs))
+                    #fh.write("QueryID: {}\t#Docs: {}\tDocIDs: {}\n".format(queryId, len(list_of_docIDs), list_of_docIDs))
 
-            else:
-                queryProcessor.vectorQuery(preprocessed_query, 3)
+            else:              
+                top_k_pairs = queryProcessor.vectorQuery(preprocessed_query, k)
 
-        fh.close()
+                print("\nQueryID: {}".format(queryId))
+                for pair in top_k_pairs:
+                    print("DocID: {}\tScore: {:.3f}".format(pair[0], pair[1]))
+
+        #fh.close()
         ############################### BATCH QUERIES PROCESSING ###############################
 
 if __name__ == '__main__':

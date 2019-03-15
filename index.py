@@ -37,11 +37,15 @@ class Posting:
 
     def term_freq(self):
         ''' return the term frequency in the document'''
-        #ToDo (Done)
+        # ToDo (Done)
+
         # if len(self.positions) > 0:
         #     return 1 + math.log(len(self.positions), 10)
         # else:
         #     return 0
+
+        # TF is defined as the number of times the term appears in a given document
+        # The current TF implementation does not account any log weighting or length normalization
         return len(self.positions)
 
 class IndexItem:
