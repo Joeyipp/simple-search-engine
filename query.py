@@ -7,6 +7,7 @@ query processing
 import sys
 import doc
 import math
+import copy
 import numpy as np
 
 from util import *
@@ -64,17 +65,19 @@ class QueryProcessor:
         def intersect(posting_1, posting_2):
             answer = [] # The final intersect of the two posting lists
 
-            while (len(posting_1) != 0) and (len(posting_2) != 0):
-                if posting_1[0] == posting_2[0]:
-                    answer.append(posting_1[0])
-                    if len(posting_1) != 0: # Error handling
-                        posting_1.pop(0)
-                    if len(posting_2) != 0: # Error handling
-                        posting_2.pop(0)
-                elif posting_1[0] < posting_2[0]:
-                    posting_1.pop(0)
+            # Make a deep copy of the posting list to preserve the original posting in the invertedIndex
+            posting_1_copy = copy.deepcopy(posting_1)
+            posting_2_copy = copy.deepcopy(posting_2)
+
+            while (len(posting_1_copy) != 0) and (len(posting_2_copy) != 0):
+                if posting_1_copy[0] == posting_2_copy[0]:
+                    answer.append(posting_1_copy[0])
+                    posting_1_copy.pop(0)
+                    posting_2_copy.pop(0)
+                elif posting_1_copy[0] < posting_2_copy[0]:
+                    posting_1_copy.pop(0)
                 else:
-                    posting_2.pop(0)
+                    posting_2_copy.pop(0)
             
             return answer
 
@@ -95,7 +98,6 @@ class QueryProcessor:
         term_doc_freq_postings = sorted(term_doc_freq_postings, key=lambda elem : elem[1])
 
         # The MERGE
-        print(term_doc_freq_postings[0])
         answer = intersect(term_doc_freq_postings[0][2], term_doc_freq_postings[1][2])
 
         for i in range(2, len(term_doc_freq_postings)):
@@ -250,8 +252,10 @@ def query():
             # Process with preprocessed_query
             if processing_algorithm == "0":
                 list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
-                print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
-                fh.write("QueryID: {}\t#Docs: {}\tDocIDs: {}\n".format(queryId, len(list_of_docIDs), list_of_docIDs))
+                
+                if list_of_docIDs:
+                    print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
+                    fh.write("QueryID: {}\t#Docs: {}\tDocIDs: {}\n".format(queryId, len(list_of_docIDs), list_of_docIDs))
 
             else:
                 queryProcessor.vectorQuery(preprocessed_query, 3)
