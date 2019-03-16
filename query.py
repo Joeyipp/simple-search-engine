@@ -105,7 +105,6 @@ class QueryProcessor:
         
         return answer
 
-
     def vectorQuery(self, preprocessed_query, k):
         ''' vector query processing, using the cosine similarity. '''
         # ToDo: return top k pairs of (docID, similarity), ranked by their cosine similarity with the query in the descending order (Done)
@@ -195,6 +194,27 @@ class QueryProcessor:
 
         return top_k
 
+def eval(queryId, queryProcessor, processing_algorithm, mode, k):
+    # Preprocess the raw query
+    preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
+
+    # Evaluate the preprocessed_query with Boolean Model
+    if processing_algorithm == "0":
+        list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
+
+        if mode == "batch":
+            if list_of_docIDs:
+                    print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
+        else:
+            print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
+
+    # Evaluate the preprocessed_query with Vector Model
+    elif processing_algorithm == "1":
+        top_k_pairs = queryProcessor.vectorQuery(preprocessed_query, k)
+
+        print("\nQueryID: {}".format(queryId))
+        for pair in top_k_pairs:
+            print("DocID: {}\tScore: {:.3f}".format(pair[0], pair[1]))
 
 def test():
     ''' test your code thoroughly. put the testing cases here'''
@@ -220,6 +240,12 @@ def query():
     query_text = sys.argv[3]
     query_id = sys.argv[4]
 
+    # Prompt the user for top K results for Vector Model
+    if processing_algorithm == "1":
+        k = int(input("Top K Pairs? "))
+    else:
+        k = 0
+        
     # Open the Cran.all Collection
     cf = CranFile ('cran.all')
 
@@ -233,69 +259,28 @@ def query():
     qrys = loadCranQry(query_text)
 
     if query_id != "batch":
-        ############################### SINGLE QUERY PROCESSING ###############################
-
+        ### SINGLE QUERY PROCESSING ###
         # Retrieve the specific (raw) query based on query_id from the qrys dictionary
         query = qrys[query_id].text
 
         # Instantiate the QueryProcessor
         queryProcessor = QueryProcessor(query, invertedIndex, cf.collection)
 
-        # Preprocess the raw query
-        preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
-
-        # Process with preprocessed_query
-        if processing_algorithm == "0":
-            list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
-            print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(query_id, len(list_of_docIDs), list_of_docIDs))
-
-        else:
-            #print(preprocessed_query)
-            k = int(input("Top K Pairs? "))
-            top_k_pairs = queryProcessor.vectorQuery(preprocessed_query, k)
-
-            print("\nQueryID: {}".format(query_id))
-            for pair in top_k_pairs:
-                print("DocID: {}\tScore: {:.3f}".format(pair[0], pair[1]))
-
-        ############################### SINGLE QUERY PROCESSING ###############################
+        # Evaluate the single query
+        eval(query_id, queryProcessor, processing_algorithm, "single", k)
 
     else: 
-        ############################### BATCH QUERIES PROCESSING ###############################
+        ### BATCH QUERIES PROCESSING ###
         query_Ids = qrys.iterkeys()
         query_Ids = sorted([int(queryId) for queryId in query_Ids])
 
         # Instantiate the QueryProcessor
         queryProcessor = QueryProcessor("None", invertedIndex, cf.collection)
 
-        #fh = open("booleanResult.txt", "w")
-
-        if processing_algorithm == "1":
-            k = int(input("Top K Pairs? "))
-        
+        # Evaluate ALL queries
         for queryId in query_Ids:
             queryProcessor.raw_query = qrys[str(queryId)].text
-        
-            # Preprocess the raw query
-            preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
-
-            # Process with preprocessed_query
-            if processing_algorithm == "0":
-                list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
-                
-                if list_of_docIDs:
-                    print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
-                    #fh.write("QueryID: {}\t#Docs: {}\tDocIDs: {}\n".format(queryId, len(list_of_docIDs), list_of_docIDs))
-
-            else:              
-                top_k_pairs = queryProcessor.vectorQuery(preprocessed_query, k)
-
-                print("\nQueryID: {}".format(queryId))
-                for pair in top_k_pairs:
-                    print("DocID: {}\tScore: {:.3f}".format(pair[0], pair[1]))
-
-        #fh.close()
-        ############################### BATCH QUERIES PROCESSING ###############################
+            eval(queryId, queryProcessor, processing_algorithm, "batch", k)
 
 if __name__ == '__main__':
     #test()

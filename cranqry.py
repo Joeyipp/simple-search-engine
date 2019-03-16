@@ -34,7 +34,7 @@ def test():
     print(len(qrys))
 
 def qidMapping():
-    ############# CREATE A MAPPING of qid in qrels.txt to qid in query.text ##############
+    ### CREATE A MAPPING of qid in qrels.txt to qid in query.text ###
     qrys = loadCranQry('query.text')
     query_Ids = qrys.iterkeys()
     query_Ids = sorted([int(queryId) for queryId in query_Ids])
@@ -57,7 +57,6 @@ def qidMapping():
         i += 1
 
     return query_qrels_mapping, qrels_query_mapping
-    ################################### END OF MAPPING ####################################
 
 if __name__ == '__main__':
     #test()
