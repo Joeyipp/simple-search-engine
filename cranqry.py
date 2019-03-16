@@ -40,12 +40,11 @@ def qidMapping():
     query_Ids = sorted([int(queryId) for queryId in query_Ids])
     
     qids = []
-    mapping = {}
+    query_qrels_mapping = {}
+    qrels_query_mapping = {}
 
     with open('qrels.text', 'r') as f:
         data = f.readlines()
-        
-
         for line in data:
             qids.append(line.split()[0])
 
@@ -53,15 +52,11 @@ def qidMapping():
 
     i = 0
     for qid in qids:
-        mapping[query_Ids[i]] = qid
+        query_qrels_mapping[query_Ids[i]] = qid
+        qrels_query_mapping[qid] = query_Ids[i]
         i += 1
-    
-    with open('qrelsMapping.txt', 'w') as f:
-        f.write("QrelsId\tQueryId\n")
-        for key, value in mapping.iteritems():
-            f.write("{}\t{}\n".format(value, key))
-    
-    return mapping
+
+    return query_qrels_mapping, qrels_query_mapping
     ################################### END OF MAPPING ####################################
 
 if __name__ == '__main__':
