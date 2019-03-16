@@ -105,7 +105,7 @@ class QueryProcessor:
         
         return answer
 
-    def vectorQuery(self, preprocessed_query, k):
+    def vectorQuery(self, preprocessed_query, k, test):
         ''' vector query processing, using the cosine similarity. '''
         # ToDo: return top k pairs of (docID, similarity), ranked by their cosine similarity with the query in the descending order (Done)
         # You can use term frequency or TFIDF to construct the vectors (Done)
@@ -191,34 +191,99 @@ class QueryProcessor:
         top_k = []
         for i in range(k):
             top_k.append(cosine_similarity_score[i])
+        
+        ### TESTS ###
+        if test == "test":
+            j = 0
+            print("\n== Query Terms ==")
+            for term in query_terms:
+                print("-> {}".format(term))
+                print("TF: {}\t\tIDF: {}\tTF-IDF: {}".format(query_tf[term], round(document_idf[term], 3), round(query_tf_idf[j], 3)))
+                j += 1
+            
+            query_v = [0.702753576, 0.702753576]
+            document_v = [0.140550715, 0.140550715]
+
+            print("\n== Testing Cosine Similary Calculations using Mock Query & Doc TF-IDF Vectors ==")
+            print("Mock Query Vec:\t[0.702753576, 0.702753576]")
+            print("Mock Docum Vec:\t[0.140550715, 0.140550715]")
+            print("Cosine Similary: {}".format(cosine_similarity(query_v, document_v)))
+         ### TESTS ###
 
         return top_k
 
-def eval(queryId, queryProcessor, processing_algorithm, mode, k):
+def eval(queryId, queryProcessor, processing_algorithm, mode, k, test=0):
     # Preprocess the raw query
     preprocessed_query, preprocessed_query_with_positions = queryProcessor.preprocessing()
+
+    if test == "test":
+        print("Preprocessed query:\n{}".format(preprocessed_query))
 
     # Evaluate the preprocessed_query with Boolean Model
     if processing_algorithm == "0":
         list_of_docIDs = queryProcessor.booleanQuery(preprocessed_query)
 
-        if mode == "batch":
-            if list_of_docIDs:
-                    print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
-        else:
-            print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
+        if test != "test":
+            if mode == "batch":
+                if list_of_docIDs:
+                        print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
+            else:
+                print("QueryID: {}\t#Docs: {}\tDocIDs: {}".format(queryId, len(list_of_docIDs), list_of_docIDs))
 
     # Evaluate the preprocessed_query with Vector Model
     elif processing_algorithm == "1":
-        top_k_pairs = queryProcessor.vectorQuery(preprocessed_query, k)
+        top_k_pairs = queryProcessor.vectorQuery(preprocessed_query, k, test)
 
-        print("\nQueryID: {}".format(queryId))
-        for pair in top_k_pairs:
-            print("DocID: {}\tScore: {:.3f}".format(pair[0], pair[1]))
-
+        if test != "test":
+            print("QueryID: {}".format(queryId))
+            for pair in top_k_pairs:
+                print("DocID: {}\tScore: {:.3f}".format(pair[0], pair[1]))
+            print("\n")
+                
 def test():
     ''' test your code thoroughly. put the testing cases here'''
-    print('Pass')
+    
+    # Parse the commandline
+    index_file = sys.argv[1]
+
+    if sys.argv[2] != "0" and sys.argv[2] != "1":
+        print("Invalid processing_algorithm. Please try again with 0 for Boolean and 1 for Vector.")
+        exit()
+    else:
+        processing_algorithm = sys.argv[2]
+
+    query_text = sys.argv[3]
+    query_id = sys.argv[4]
+    
+    # Prompt the user for top K results for Vector Model
+    if processing_algorithm == "1":
+        k = 3
+    else:
+        k = 0
+        
+    # Open the Cran.all Collection
+    cf = CranFile ('cran.all')
+
+    # Instantiate an invertedIndex
+    invertedIndex = InvertedIndex()
+
+    # Load the index_file into memory and reconstruct the invertedIndex
+    invertedIndex.load(index_file)
+
+    # Load the query_text file into qrys dictionary
+    qrys = loadCranQry(query_text)
+
+    # Retrieve the specific (raw) query based on query_id from the qrys dictionary
+    query = qrys[query_id].text
+
+    # Instantiate the QueryProcessor
+    queryProcessor = QueryProcessor(query, invertedIndex, cf.collection)
+
+    # Evaluate the single query with test cases (embedded in respective functions)
+    print("Original query:\n{}".format(query))
+    eval(query_id, queryProcessor, processing_algorithm, "single", k, "test")
+
+    print('\nPass')
 
 def query():
     ''' the main query processing program, using QueryProcessor'''
@@ -283,5 +348,5 @@ def query():
             eval(queryId, queryProcessor, processing_algorithm, "batch", k)
 
 if __name__ == '__main__':
-    #test()
-    query()
+    test()
+    #query()
