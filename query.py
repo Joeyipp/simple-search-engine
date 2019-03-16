@@ -348,5 +348,5 @@ def query():
             eval(queryId, queryProcessor, processing_algorithm, "batch", k)
 
 if __name__ == '__main__':
-    test()
-    #query()
+    #test()
+    query()

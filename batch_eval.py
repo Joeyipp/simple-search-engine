@@ -84,7 +84,7 @@ def batch_eval(qrys, query_Ids, query_qrels_mapping, qrels_dict, invertedIndex, 
         y_true_vector = []
         y_score_vector = []
 
-        top_k_pairs = queryProcessor.vectorQuery(preprocessed_query, k)
+        top_k_pairs = queryProcessor.vectorQuery(preprocessed_query, k, test=0)
         
         for pair in top_k_pairs:
             if pair[0] not in list_of_relevant_qrels_docs:
@@ -118,7 +118,6 @@ def batch_eval(qrys, query_Ids, query_qrels_mapping, qrels_dict, invertedIndex, 
         print("There is significant difference between Boolean and Vector Retrieval Model!")
     else:
         print("There is NO significant difference between Boolean and Vector Retrieval Model!")
-
 
 def eval():
     # ToDo (Done)
@@ -184,7 +183,6 @@ def eval():
         batch_eval(qrys, query_Ids, query_qrels_mapping, qrels_dict, invertedIndex, cf.collection, k)
 
     print('Done')
-
 
 if __name__ == '__main__':
     eval()
