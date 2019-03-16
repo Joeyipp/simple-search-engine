@@ -76,7 +76,7 @@ class InvertedIndex:
         self.items = {} # list of IndexItems
         self.nDocs = 0  # the number of indexed documents
 
-    def indexDoc(self, doc): # indexing a Document object
+    def indexDoc(self, doc, mode=0): # indexing a Document object
         ''' indexing a document, using the simple SPIMI algorithm, but no need to store blocks due to the small collection we are handling. Using save/load the whole index instead'''
 
         # ToDo: indexing only title and body; use some functions defined in util.py (Done)
@@ -86,12 +86,20 @@ class InvertedIndex:
 
         # Tokenizing
         document_terms = lowerCaseAndSplit(doc.body)
-        
+        if mode == "test":
+            print("List of tokens (lowercased):\n{}\n".format(document_terms))
+
         # Remove stopwords
         document_terms = removeStopWords(document_terms)
+        if mode == "test":
+            # Test for stopwords removal
+            print("After stopwords removal:\n{}\n".format(document_terms))
 
         # Stem the list of terms
         document_terms = stemming(document_terms)
+        if mode == "test":
+            # Test for stemming
+            print("After stemming:\n{}\n".format(document_terms))
 
         # Generate the (term, position) pair
         terms_with_positions = []
@@ -124,7 +132,7 @@ class InvertedIndex:
     def save(self, filename):
         ''' save to disk'''
         # ToDo: using your preferred method to serialize/deserialize the index (Done)
-        print("Saving to disk...\n")
+        print("Saving to disk...")
         with open(filename, "w") as f:
             for term in self.items:
                 f.write(jsonpickle.encode(self.items[term]))
@@ -136,7 +144,7 @@ class InvertedIndex:
     def load(self, filename):
         ''' load from disk'''
         # ToDo (Done)
-        print("Loading from disk...\n")
+        print("Loading from disk...")
         with open(filename, "r") as f:
             data = f.readlines()
             for i in range(len(data)-1):
@@ -156,19 +164,49 @@ class InvertedIndex:
 
 def test():
     ''' test your code thoroughly. put the testing cases here'''
-    # ### Testing
-    # print("Before Loading Index")
-    # print(invertedIndex.items["experiment"].term, invertedIndex.items["experiment"].sorted_postings)
-    # print(invertedIndex.items["experiment"].posting[1].positions)
-    # print(invertedIndex.items["experiment"].posting[1].term_freq())
-    # print("IDF: ", invertedIndex.idf("experiment"))
 
-    # print("After Loading Index")
-    # invertedIndex.load("index_file")
-    # print(invertedIndex.items["experiment"].term, invertedIndex.items["experiment"].sorted_postings)
-    # print(invertedIndex.items["experiment"].posting["1"].positions)
-    # print(invertedIndex.items["experiment"].posting["1"].term_freq())
-    # print("IDF: ", invertedIndex.idf("experiment"))
+    # Import the cran.all collection
+    cf = CranFile(sys.argv[1])
+
+    # Instantiate an invertedIndex
+    invertedIndex_1 = InvertedIndex()
+
+    # Index the first 2 documents
+    for i in range(2):
+        print("Indexing document {}\n".format(cf.docs[i].docID))
+        invertedIndex_1.indexDoc(cf.docs[i], "test")
+
+    # Check number of document indexed
+    print("# of documents indexed: {}".format(invertedIndex_1.nDocs))
+
+    # Check number of terms indexed
+    print("# of terms indexed: {}\n".format(len([item for item in invertedIndex_1.items.iterkeys()])))
+
+    # Sort the invertedIndex
+    invertedIndex_1.sort()
+
+    # Check the posting list, term frequency, and IDF
+    print("== Statistics for the term 'lift' BEFORE saving the index to disk (invertedIndex_1) ==")
+    print("Posting list:\t{}".format(invertedIndex_1.find("lift").sorted_postings))
+    print("Positions:\t{}".format(invertedIndex_1.find("lift").posting[1].positions))
+    print("TF:\t\t{}".format(invertedIndex_1.find("lift").posting[1].term_freq()))
+    print("IDF:\t\t{}\n".format(round(invertedIndex_1.idf("lift"), 5)))
+
+    # Save the invertedIndex
+    invertedIndex_1.save(sys.argv[2])
+
+    # Instantiate a new invertedIndex
+    invertedIndex_2 = InvertedIndex()
+
+    # Load the invertedIndex
+    invertedIndex_2.load(sys.argv[2])
+
+    # Check the posting list, term frequency, and IDF
+    print("== Statistics for the term 'lift' AFTER loading the index from disk (invertedIndex_2) ==")
+    print("Posting list:\t{}".format(invertedIndex_2.find("lift").sorted_postings))
+    print("Positions:\t{}".format(invertedIndex_2.find("lift").posting["1"].positions))
+    print("TF:\t\t{}".format(invertedIndex_2.find("lift").posting["1"].term_freq()))
+    print("IDF:\t\t{}\n".format(round(invertedIndex_2.idf("lift"), 5)))
 
     print('Pass')
 
