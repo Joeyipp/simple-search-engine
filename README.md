@@ -4,8 +4,8 @@ A **Simple Search Engine** on Cranfield Dataset and **Query Processor** using **
 
 ### Instructions
 To run the scripts locally:
-1. Clone this repository.
-2. Navigate to the **scripts** folder and run ```pip install requirements.txt``` to install dependencies.
+1. Clone this repository. *Scripts are written with Python 2.7.x.*
+2. Navigate to the **scripts** folder and run ```pip install requirements.txt``` to install dependencies. 
 3. For complete documentation, refer [to this document](https://github.com/Joeyipp/simple-search-engine/blob/master/documentation/Design_Documentation.pdf).
 
 ### System Architecture
